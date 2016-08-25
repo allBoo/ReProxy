@@ -1,0 +1,6 @@
+-sname reproxy
+
+-setcookie reproxy_cookie
+
++K true
++A30

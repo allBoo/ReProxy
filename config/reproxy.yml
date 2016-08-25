@@ -1,0 +1,42 @@
+############################## Network And HTTP ###############################
+net:
+# Set both 'bind_host' and 'publish_host':
+  host: 0.0.0.0
+# Set a custom port to listen for HTTP traffic:
+  port: 9800
+
+
+#################################### Proxy ####################################
+proxy:
+  default: 10
+  from_port: 10000
+  bin: "/usr/sbin/tor"
+  password_hash: "16:D1533538971EBDCF60FC3328556466C46730C1EEB77BBE4AD3BE3BE542"
+  password: "nhsoY68a5Fs5sal2#a"
+
+#################################### Paths ####################################
+
+path:
+# Path to directory containing configuration (this file and logging.yml):
+  conf: /apps/reproxy/config/
+
+# Path to data files
+  data: /tmp/reproxy
+
+# Path to temporary files:
+  work: /tmp
+
+# Path to log files:
+  logs: log/
+
+############################## Logging ###############################
+
+log:
+# name of work log file
+  file: "reproxy.log"
+  error: "error.log"
+  crash: "crash.log"
+# log level
+  level: debug
+# show info about starting processes in error log for extra debugging
+  procs: true

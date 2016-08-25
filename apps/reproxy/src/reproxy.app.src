@@ -1,0 +1,22 @@
+{application, reproxy,
+ [{description, "An OTP application"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, { reproxy_app, []}},
+  {applications,
+   [kernel,
+    stdlib,
+    lager,
+    inets,
+    ssl,
+    yamerl,
+    elli,
+    ibrowse
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {maintainers, []},
+  {licenses, []},
+  {links, []}
+ ]}.
