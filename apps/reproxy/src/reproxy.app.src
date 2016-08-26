@@ -1,5 +1,5 @@
 {application, reproxy,
- [{description, "An OTP application"},
+ [{description, "TOR proxy pull"},
   {vsn, "0.1.0"},
   {registered, []},
   {mod, { reproxy_app, []}},
@@ -8,10 +8,7 @@
     stdlib,
     lager,
     inets,
-    ssl,
-    yamerl,
-    elli,
-    ibrowse
+    yamerl
    ]},
   {env,[]},
   {modules, []},

@@ -10,7 +10,6 @@
 -author("alboo").
 
 -behaviour(gen_server).
--include_lib("elli/include/elli.hrl").
 -include_lib("reproxy.hrl").
 
 %% API
@@ -81,10 +80,6 @@ release(Pid) when is_pid(Pid) ->
   {stop, Reason :: term()} | ignore).
 init([Client, Port]) ->
   ?LOG("Start proxy on port ~p", [Port]),
-
-  random:seed(erlang:phash2([node()]),
-    erlang:monotonic_time(),
-    erlang:unique_integer()),
 
   create_config(Port),
   run_instance(Port),
@@ -226,7 +221,7 @@ terminate(_Reason,  #state{remote = RemoteSocket, client = Client} = State) ->
   gen_tcp:close(RemoteSocket),
   gen_tcp:close(Client),
 
-  (random:uniform(5) >= 3) andalso refresh(State#state.ctrl),
+  (rand:uniform(5) >= 3) andalso refresh(State#state.ctrl),
   ok;
 
 terminate(_Reason, _State) ->
