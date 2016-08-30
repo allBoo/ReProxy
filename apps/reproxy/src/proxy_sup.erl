@@ -85,8 +85,8 @@ find_exists() ->
   ignore |
   {error, Reason :: term()}).
 init([]) ->
-  {ok, { {simple_one_for_one, 5, 10}, [
-    {proxy, {proxy, start_link, []}, temporary, 5, worker, [proxy]}
+  {ok, { {simple_one_for_one, 50, 1}, [
+    {proxy, {proxy, start_link, []}, temporary, 5000, worker, [proxy]}
   ]}}.
 
 %%%===================================================================

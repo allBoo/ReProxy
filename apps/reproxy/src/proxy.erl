@@ -221,7 +221,7 @@ terminate(_Reason,  #state{remote = RemoteSocket, client = Client} = State) ->
   gen_tcp:close(RemoteSocket),
   gen_tcp:close(Client),
 
-  (rand:uniform(5) >= 3) andalso refresh(State#state.ctrl),
+  (rand:uniform(5) =:= 5) andalso refresh(State#state.ctrl),
   ok;
 
 terminate(_Reason, _State) ->
@@ -291,11 +291,16 @@ refresh(CtrlPort) ->
   case gen_tcp:connect({127, 0, 0, 1}, CtrlPort, ?OPTIONS) of
     {ok, RemoteSocket} ->
       Password = list_to_binary(config:get('proxy.password')),
-      ok = gen_tcp:send(RemoteSocket, [<<"AUTHENTICATE \"">>, Password, <<"\"\r\n">>]),
-      {ok, _} = gen_tcp:recv(RemoteSocket, 0),
-      ok = gen_tcp:send(RemoteSocket, <<"signal NEWNYM\r\n">>),
-      {ok, _} = gen_tcp:recv(RemoteSocket, 0),
-      gen_tcp:close(RemoteSocket),
+      try
+        ok = gen_tcp:send(RemoteSocket, [<<"AUTHENTICATE \"">>, Password, <<"\"\r\n">>]),
+        {ok, _} = gen_tcp:recv(RemoteSocket, 0),
+        ok = gen_tcp:send(RemoteSocket, <<"signal NEWNYM\r\n">>),
+        {ok, _} = gen_tcp:recv(RemoteSocket, 0),
+        gen_tcp:close(RemoteSocket)
+      catch
+          _:_  ->
+            ?WARN("Cannot refresh ~p", [CtrlPort - 1])
+      end,
       ok;
 
     {error, Err} ->

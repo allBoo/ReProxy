@@ -29,7 +29,7 @@ start_link() ->
 
 %% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
 init([]) ->
-    {ok, {{one_for_one, 5, 10}, [
+    {ok, {{rest_for_one, 5, 10}, [
         ?CHILD(config),
         ?CHILD_SUP(proxy_sup),
         ?CHILD(proxy_pull),
