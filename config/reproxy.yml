@@ -8,11 +8,11 @@ net:
 
 #################################### Proxy ####################################
 proxy:
-  default: 10
   from_port: 10000
   bin: "/usr/sbin/tor"
   password_hash: "16:D1533538971EBDCF60FC3328556466C46730C1EEB77BBE4AD3BE3BE542"
   password: "nhsoY68a5Fs5sal2#a"
+  concurrent: 1
 
 #################################### Paths ####################################
 

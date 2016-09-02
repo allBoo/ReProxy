@@ -152,19 +152,24 @@ handle_info(timeout, #state{remote = RemoteSocket, client = Client} = State) ->
   %% 0x05:version
   case gen_tcp:recv(Client, 0) of
     {ok, Greeting} ->
-      ok = gen_tcp:send(RemoteSocket, Greeting),
-      {ok, RemoteResponse} = gen_tcp:recv(RemoteSocket, 0),
-      gen_tcp:send(Client, RemoteResponse),
-      ok = inet:setopts(Client, [{active, true}]),
-      ok = inet:setopts(RemoteSocket, [{active, true}]),
-      ?DBG("Handshake done. Going to active mode"),
-      {noreply, State};
+      try
+        ok = gen_tcp:send(RemoteSocket, Greeting),
+        {ok, RemoteResponse} = gen_tcp:recv(RemoteSocket, 0),
+        gen_tcp:send(Client, RemoteResponse),
+        ok = inet:setopts(Client, [{active, true}]),
+        ok = inet:setopts(RemoteSocket, [{active, true}]),
+        ?DBG("Handshake done. Going to active mode"),
+        {noreply, State}
+      catch
+         _:_ ->
+           {stop, {shutdown, client_closed}, State}
+      end;
 
     {error, closed} ->
-      {error, client_closed};
+      {stop, {shutdown, client_closed}, State};
 
     {error, Reason} ->
-      {error, Reason}
+      {stop, {shutdown, Reason}, State}
   end;
 
 handle_info({tcp, Client, Request}, #state{remote = RemoteSocket, client = Client} = State) ->
@@ -218,8 +223,16 @@ handle_info(_Info, State) ->
 -spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
     State :: #state{}) -> term()).
 terminate(_Reason,  #state{remote = RemoteSocket, client = Client} = State) ->
-  gen_tcp:close(RemoteSocket),
-  gen_tcp:close(Client),
+  try
+    gen_tcp:close(RemoteSocket)
+  catch
+      _:_ -> ok
+  end,
+  try
+    gen_tcp:close(Client)
+  catch
+      _:_ -> ok
+  end,
 
   (rand:uniform(5) =:= 5) andalso refresh(State#state.ctrl),
   ok;

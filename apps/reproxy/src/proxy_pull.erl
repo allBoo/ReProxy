@@ -30,10 +30,11 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {
-  used = []  :: [{pid(), integer()}],
-  used_ports = [] :: [integer()],
+  running = #{}  :: #{},
+  port_uses = #{} :: #{},
   free_ports = [] :: [integer()],
-  last_port  = 0  :: integer()
+  last_port  = 0  :: integer(),
+  concurrent = 1  :: integer()
 }).
 
 -define(DEF_START_PORT, 10000).
@@ -81,8 +82,9 @@ release(Pid) ->
 init([]) ->
   RunningPorts = proxy_sup:find_exists(),
   {FreePorts, LastPort} = calc_free_ports(RunningPorts),
+  Concurrent = config:get('proxy.concurrent', 1, integer),
 
-  {ok, #state{free_ports = FreePorts, last_port = LastPort}}.
+  {ok, #state{free_ports = FreePorts, last_port = LastPort, concurrent = Concurrent}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -103,17 +105,40 @@ init([]) ->
 handle_call({lock, Client}, _From, State) when length(State#state.free_ports) == 0 ->
   Port = State#state.last_port + 2,
   Proxy = proxy_sup:start_proxy(Client, Port),
-  UsedPorts = State#state.used_ports ++ [Port],
-  Used = State#state.used ++ [{Proxy, Port}],
   erlang:monitor(process, Proxy),
-  {reply, {ok, Proxy}, State#state{used_ports = UsedPorts, last_port = Port, used = Used}};
 
-handle_call({lock, Client}, _From, #state{free_ports = [Port | FreePorts]} = State) ->
+  PortUsesCnt = maps:get(Port, State#state.port_uses, 0) + 1,
+  PortUses = (State#state.port_uses)#{Port => PortUsesCnt},
+  Running = (State#state.running)#{Proxy => Port},
+
+  FreePorts = if
+                PortUsesCnt < State#state.concurrent ->
+                  [Port];
+
+                true -> []
+              end,
+
+  %?DBG("PortUses ~p, FreePorts ~p, Running ~p", [PortUses, FreePorts, Running]),
+  {reply, {ok, Proxy}, State#state{port_uses = PortUses, last_port = Port, free_ports = FreePorts, running = Running}};
+
+
+handle_call({lock, Client}, _From, #state{free_ports = [Port | Free]} = State) ->
   Proxy = proxy_sup:start_proxy(Client, Port),
-  UsedPorts = State#state.used_ports ++ [Port],
-  Used = State#state.used ++ [{Proxy, Port}],
   erlang:monitor(process, Proxy),
-  {reply, {ok, Proxy}, State#state{used_ports = UsedPorts, free_ports = FreePorts, used = Used}};
+
+  PortUsesCnt = maps:get(Port, State#state.port_uses, 0) + 1,
+  PortUses = (State#state.port_uses)#{Port => PortUsesCnt},
+  Running = (State#state.running)#{Proxy => Port},
+
+  FreePorts = if
+                PortUsesCnt < State#state.concurrent ->
+                  State#state.free_ports;
+
+                true -> Free
+              end,
+
+  %?DBG("PortUses ~p, FreePorts ~p, Running ~p", [PortUses, FreePorts, Running]),
+  {reply, {ok, Proxy}, State#state{port_uses = PortUses, free_ports = FreePorts, running = Running}};
 
 
 
@@ -133,12 +158,32 @@ handle_call(_Request, _From, State) ->
   {stop, Reason :: term(), NewState :: #state{}}).
 
 handle_cast({release, Pid}, State) ->
-  case lists:keytake(Pid, 1, State#state.used) of
-    {value, {Pid, Port}, Used} ->
+  case maps:get(Pid, State#state.running, 0) of
+    Port when Port > 0 ->
       ?LOG("Release port ~p", [Port]),
-      FreePorts = State#state.free_ports ++ [Port],
-      UsedPorts = State#state.used_ports -- [Port],
-      {noreply, State#state{free_ports = FreePorts, used_ports = UsedPorts, used = Used}};
+      Running = maps:remove(Pid, State#state.running),
+
+      PortUsesCnt = maps:get(Port, State#state.port_uses, 0) - 1,
+      PortUses = if
+                   PortUsesCnt < 1 ->
+                     try
+                       maps:remove(Port, State#state.port_uses)
+                     catch
+                         _:_ ->
+                           State#state.port_uses
+                     end;
+
+                   true ->
+                     (State#state.port_uses)#{Port => PortUsesCnt}
+                 end,
+
+      FreePorts = case lists:member(Port, State#state.free_ports) of
+                    true -> State#state.free_ports;
+                    _    -> State#state.free_ports ++ [Port]
+                  end,
+
+      %?DBG("PortUses ~p, FreePorts ~p, Running ~p", [PortUses, FreePorts, Running]),
+      {noreply, State#state{free_ports = FreePorts, port_uses = PortUses, running = Running}};
 
     _ ->
       {noreply, State}
