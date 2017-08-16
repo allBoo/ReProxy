@@ -167,10 +167,12 @@ start_worker_and_hand_over(Client, Trys) ->
       {ok, Pid};
     {error, closed} ->
       ?ERR("start_worker_and_hand_over ~p client socket closed!~n", [Client]),
-      supervisor:terminate_child(proxy_client_worker_sup, Pid),
+      try supervisor:terminate_child(proxy_client_worker_sup, Pid)
+      catch _:_ -> ok end,
       {error, client_closed};
     {error, _Reason} ->
-      supervisor:terminate_child(proxy_client_worker_sup, Pid),
+      try supervisor:terminate_child(proxy_client_worker_sup, Pid)
+      catch _:_ -> ok end,
       ?WARN("start_worker_and_hand_over ~p set controlling_process error: ~p, retry!~n", [Client, _Reason]),
       start_worker_and_hand_over(Client, Trys - 1)
   end.
