@@ -281,6 +281,7 @@ create_config_file(Port, CfgDir) ->
   CtrlS = integer_to_list(Port + 1),
   Config = "RunAsDaemon 1\n" ++
            "ControlPort " ++ CtrlS ++ "\n" ++
+           "MaxCircuitDirtiness 1\n" ++
            "SocksPort " ++ PortS ++ "\n" ++
            "PidFile " ++ PidFile ++ "\n" ++
            "DataDirectory " ++ DataDir ++ "\n" ++
